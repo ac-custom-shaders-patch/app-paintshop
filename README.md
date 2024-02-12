@@ -1,6 +1,6 @@
 # Paintshop
 
-<a href="https://gfycat.com/JadedBothCatbird"><img src="https://thumbs.gfycat.com/JadedBothCatbird-size_restricted.gif"></a>
+https://github.com/ac-custom-shaders-patch/app-paintshop/assets/3996502/0d2e1786-1222-472a-94f2-1f6553b1ac10
 
 Paintshop app for drawing on cars in Assetto Corsa. Written in Lua, needs at least CSP 0.1.77 to work. Feel free to use as an example, fork and modify it or anything else.
 
