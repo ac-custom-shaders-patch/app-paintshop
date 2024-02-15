@@ -78,8 +78,25 @@ end)
 
 local carPreview ---@type ac.GeometryShot
 local hoveredMaterial
+--txDiffues texture file name of hovered textures
+local hoveredTextureFileName
+--current mesh list - as it's a bit heavier to grab them from the texture file name then store this when we hover over new things
+local meshes
 local camera ---@type ac.GrabbedCamera
 local appVisible = false
+
+--utility function to build a mesh filter string from a list of materials
+local function buildFilterString(materialStore)
+  local _filterString = '{ '
+  for i = 1,#materialStore do
+    _filterString = _filterString..'material:'..materialStore[i]..' & lod:A'
+    if i ~= #materialStore then
+      _filterString = _filterString..' | '
+    end
+  end
+  _filterString = _filterString..' }'
+  return _filterString 
+end
 
 local function MeshSelection()
   local ray = render.createMouseRay()
@@ -89,14 +106,32 @@ local function MeshSelection()
     ui.pushFont(ui.Font.Small)
     ui.text('\tMesh: '..tostring(ref:name()))
     ui.text('\tMaterial: '..tostring(ref:materialName()))
-    ui.text('\tTexture: '..tostring(ref:getTextureSlotFilename('txDiffuse')))
+    --texture file names are quite long so wrap this for display
+    ui.textWrapped('\tTexture: '..tostring(ref:getTextureSlotFilename('txDiffuse')))
     ui.popFont()
     ui.offsetCursorY(20)
+    
 
     if hoveredMaterial ~= ref:materialName() then
       hoveredMaterial = ref:materialName()
+      --grab txDiffuse file name
+      hoveredTextureFileName = ref:getTextureSlotFilename('txDiffuse')
+
       if carPreview then carPreview:dispose() end
-      carPreview = ac.GeometryShot(carNode:findMeshes('{ material:'..hoveredMaterial..' & lod:A }'), vec2(420, 320))
+
+      --loop through the car meshes and discard any that don't have the same txDiffuse texture filename
+      --(there could be a better way to do this with a filter but I don't know how to do that)
+      meshes = carNode:findMeshes('{ ! material:DAMAGE_GLASS }')
+      local _materialStore = {}
+      for i = 0,meshes.getMaterialsCount(meshes) do
+        local _textureFileName = meshes.getTextureSlotFilename(meshes, i, 'txDiffuse')
+        if _textureFileName == hoveredTextureFileName then
+          table.insert(_materialStore, meshes.materialName(meshes, i))
+        end
+      end
+      --fetch the mesh list of all matched materials
+      meshes = carNode:findMeshes(buildFilterString(_materialStore))
+      carPreview = ac.GeometryShot(meshes, vec2(420, 320))
       carPreview:setClearColor(rgbm(0.14, 0.14, 0.14, 1))
     end
 
@@ -121,7 +156,10 @@ local function MeshSelection()
 
       if uiState.shiftDown and not uiState.altDown and uiState.isMouseLeftKeyClicked and not uiState.wantCaptureMouse then
         if uiState.ctrlDown then
-          local _selectedMeshes = carNode:findMeshes('{ material:'..hoveredMaterial..' & lod:A }')
+
+          --use our stored mesh list for painting
+          local _selectedMeshes = meshes
+
           local _carTexture = ref:getTextureSlotFilename('txDiffuse')
           os.openFileDialog({
             title = 'Open Base AO Map',
@@ -139,7 +177,8 @@ local function MeshSelection()
             end
           end)
         else
-          selectedMeshes = carNode:findMeshes('{ material:'..hoveredMaterial..' & lod:A }')
+          --use our stored mesh list for painting
+          selectedMeshes = meshes
           carTexture = ref:getTextureSlotFilename('txDiffuse')
           aoTexture = nil
           camera = ac.grabCamera('Paintshop')
